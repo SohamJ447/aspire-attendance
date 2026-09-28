@@ -291,7 +291,7 @@ async function loadMeetings() {
   const { data, error } =
     await supabaseClient
       .from("meetings")
-      .select("id, title, meeting_date, is_open")
+      .select("id, title, meeting_date, is_open, qr_token")
       .order("id", { ascending: false });
 
 
@@ -325,20 +325,59 @@ async function loadMeetings() {
       "meeting";
 
 
-    div.innerHTML = `
-      <div class="meeting-title">
-        ${meeting.title}
-      </div>
+   const attendanceUrl =
+  window.location.origin +
+  "/?token=" +
+  meeting.qr_token;
 
-      <div class="meeting-date">
-        ${meeting.meeting_date}
-      </div>
+div.innerHTML = `
+  <div class="meeting-title">
+    ${meeting.title}
+  </div>
 
-      <div class="${meeting.is_open ? "open" : "closed"}">
-        ${meeting.is_open ? "● Attendance Open" : "● Attendance Closed"}
-      </div>
-    `;
+  <div class="meeting-date">
+    ${meeting.meeting_date}
+  </div>
 
+  <div class="${meeting.is_open ? "open" : "closed"}">
+    ${meeting.is_open ? "● Attendance Open" : "● Attendance Closed"}
+  </div>
+
+  <div
+    id="qr-${meeting.id}"
+    style="margin:20px auto; width:200px;"
+  ></div>
+
+  <button
+    onclick="copyLink('${attendanceUrl}')"
+    style="margin-top:10px;"
+  >
+    Copy Attendance Link
+  </button>
+
+  <a
+    href="${attendanceUrl}"
+    target="_blank"
+    style="
+      display:block;
+      margin-top:12px;
+      color:#2563eb;
+      text-decoration:none;
+      font-weight:bold;
+    "
+  >
+    Open Attendance Page
+  </a>
+`;
+
+new QRCode(
+  document.getElementById(`qr-${meeting.id}`),
+  {
+    text: attendanceUrl,
+    width: 200,
+    height: 200
+  }
+);
 
     meetingsBox.appendChild(div);
 
@@ -346,7 +385,12 @@ async function loadMeetings() {
 
 }
 
+function copyLink(link) {
 
+  navigator.clipboard.writeText(link);
+
+  alert("Attendance link copied!");
+}
 loadMeetings();
 
 </script>
