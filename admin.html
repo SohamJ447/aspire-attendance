@@ -321,11 +321,9 @@ async function loadMeetings() {
     const div =
       document.createElement("div");
 
-    div.className =
-      "meeting";
+    div.className = "meeting";
 
-
-   const attendanceUrl =
+const attendanceUrl =
   window.location.origin +
   "/?token=" +
   meeting.qr_token;
@@ -379,7 +377,7 @@ new QRCode(
   }
 );
 
-    meetingsBox.appendChild(div);
+meetingsBox.appendChild(div);
 
   });
 
