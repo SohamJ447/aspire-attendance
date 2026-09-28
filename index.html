@@ -179,8 +179,9 @@
 
     const urlParams = new URLSearchParams(window.location.search);
 
-    const meetingId =
-      urlParams.get("meeting") || "5";
+const qrToken = urlParams.get("token");
+
+let meetingId = null;
 
 
     /* =====================================================
