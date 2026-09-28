@@ -6,6 +6,9 @@
 
   <title>ASPIRE Attendance</title>
 
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     * {
       box-sizing: border-box;
@@ -97,10 +100,15 @@
       background: #1d4ed8;
     }
 
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
     .status {
       margin-top: 20px;
       font-weight: 600;
-      color: #16a34a;
+      min-height: 20px;
     }
 
     .footer {
@@ -121,17 +129,18 @@
 
     <p class="subtitle">Attendance System</p>
 
-    <div class="meeting">
-      ASPIRE Test Meeting
+    <div class="meeting" id="meeting">
+      Loading meeting...
     </div>
 
     <input
       type="text"
       placeholder="Enter your name"
       id="name"
+      autocomplete="name"
     >
 
-    <button onclick="markAttendance()">
+    <button id="attendanceButton" onclick="markAttendance()">
       Mark Attendance
     </button>
 
@@ -144,21 +153,261 @@
   </div>
 
   <script>
-    function markAttendance() {
 
-      const name = document.getElementById("name").value.trim();
+    /* =====================================================
+       SUPABASE CONNECTION
+       ===================================================== */
 
-      if (name === "") {
-        document.getElementById("status").style.color = "#dc2626";
-        document.getElementById("status").innerText =
-          "Please enter your name.";
+    const SUPABASE_URL = "https://ruscrtdlhincwkuwbqpl.supabase.co/rest/v1/";
+    const SUPABASE_KEY = "sb_publishable_SCKiz4jx6wKnFr-vD8gPQQ_9KBeQZgP";
+
+    const supabaseClient = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+    /* =====================================================
+       GET MEETING ID
+       
+       For our first test:
+       meeting ID = 1
+
+       Later, QR codes will automatically provide
+       the correct meeting.
+       ===================================================== */
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const meetingId =
+      urlParams.get("meeting") || "1";
+
+
+    /* =====================================================
+       LOAD MEETING
+       ===================================================== */
+
+    async function loadMeeting() {
+
+      const meetingBox =
+        document.getElementById("meeting");
+
+      const { data, error } =
+        await supabaseClient
+          .from("meetings")
+          .select("id, title, meeting_date, is_open")
+          .eq("id", meetingId)
+          .single();
+
+      if (error || !data) {
+
+        meetingBox.innerText =
+          "Meeting not found.";
+
+        document.getElementById("attendanceButton").disabled = true;
+
         return;
       }
 
-      document.getElementById("status").style.color = "#16a34a";
-      document.getElementById("status").innerText =
-        "✓ Attendance marked successfully!";
+      if (!data.is_open) {
+
+        meetingBox.innerText =
+          data.title + " — Attendance Closed";
+
+        document.getElementById("attendanceButton").disabled = true;
+
+        return;
+      }
+
+      meetingBox.innerText =
+        data.title;
     }
+
+
+    /* =====================================================
+       MARK ATTENDANCE
+       ===================================================== */
+
+    async function markAttendance() {
+
+      const nameInput =
+        document.getElementById("name");
+
+      const status =
+        document.getElementById("status");
+
+      const button =
+        document.getElementById("attendanceButton");
+
+      const name =
+        nameInput.value.trim();
+
+
+      /* Empty name */
+
+      if (name === "") {
+
+        status.style.color = "#dc2626";
+
+        status.innerText =
+          "Please enter your name.";
+
+        return;
+      }
+
+
+      /* Disable button while processing */
+
+      button.disabled = true;
+
+      button.innerText =
+        "Checking...";
+
+      status.style.color = "#6b7280";
+
+      status.innerText =
+        "Checking your name...";
+
+
+      try {
+
+        /* =================================================
+           CHECK MEETING
+           ================================================= */
+
+        const { data: meeting, error: meetingError } =
+          await supabaseClient
+            .from("meetings")
+            .select("id, title, is_open")
+            .eq("id", meetingId)
+            .single();
+
+
+        if (meetingError || !meeting) {
+
+          throw new Error(
+            "Meeting not found."
+          );
+        }
+
+
+        if (!meeting.is_open) {
+
+          throw new Error(
+            "Attendance for this meeting is closed."
+          );
+        }
+
+
+        /* =================================================
+           FIND MEMBER
+           ================================================= */
+
+        const { data: members, error: memberError } =
+          await supabaseClient
+            .from("members")
+            .select("id, name")
+            .ilike("name", name);
+
+
+        if (memberError) {
+
+          throw new Error(
+            "Could not check member name."
+          );
+        }
+
+
+        if (!members || members.length === 0) {
+
+          throw new Error(
+            "Name not found. Please enter your registered ASPIRE name."
+          );
+        }
+
+
+        if (members.length > 1) {
+
+          throw new Error(
+            "More than one member has this name. Please contact ASPIRE."
+          );
+        }
+
+
+        const member =
+          members[0];
+
+
+        /* =================================================
+           SAVE ATTENDANCE
+           ================================================= */
+
+        const { error: attendanceError } =
+          await supabaseClient
+            .from("attendance")
+            .insert({
+              meeting_id: meeting.id,
+              member_id: member.id
+            });
+
+
+        /* =================================================
+           DUPLICATE ATTENDANCE
+           ================================================= */
+
+        if (attendanceError) {
+
+          if (attendanceError.code === "23505") {
+
+            throw new Error(
+              "You have already marked attendance for this meeting."
+            );
+          }
+
+          throw new Error(
+            "Could not mark attendance. Please try again."
+          );
+        }
+
+
+        /* =================================================
+           SUCCESS
+           ================================================= */
+
+        status.style.color = "#16a34a";
+
+        status.innerText =
+          "✓ Attendance marked successfully!";
+
+        nameInput.value = "";
+
+        button.innerText =
+          "Attendance Marked";
+
+      }
+
+      catch (error) {
+
+        status.style.color = "#dc2626";
+
+        status.innerText =
+          error.message;
+
+        button.disabled = false;
+
+        button.innerText =
+          "Mark Attendance";
+      }
+
+    }
+
+
+    /* =====================================================
+       LOAD PAGE
+       ===================================================== */
+
+    loadMeeting();
+
   </script>
 
 </body>
