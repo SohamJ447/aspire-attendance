@@ -1,1 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <title>ASPIRE Admin</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #f5f7fb;
+      padding: 25px 15px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 700px;
+      margin: auto;
+    }
+
+    .header {
+      background: #111827;
+      color: white;
+      padding: 25px;
+      border-radius: 18px;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 25px;
+      margin-bottom: 6px;
+    }
+
+    .header p {
+      color: #d1d5db;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 18px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.07);
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      color: #111827;
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      font-weight: bold;
+      color: #374151;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #9ca3af;
+    }
+
+    .status {
+      margin-top: 15px;
+      font-weight: bold;
+      min-height: 20px;
+    }
+
+    .meeting {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
+    }
+
+    .meeting-title {
+      font-weight: bold;
+      font-size: 17px;
+      color: #111827;
+    }
+
+    .meeting-date {
+      color: #6b7280;
+      margin-top: 5px;
+    }
+
+    .open {
+      color: #16a34a;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    .closed {
+      color: #dc2626;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <h1>ASPIRE Admin</h1>
+    <p>Attendance Management System</p>
+  </div>
+
+  <div class="card">
+
+    <h2>Create New Meeting</h2>
+
+    <label for="title">Meeting Title</label>
+
+    <input
+      type="text"
+      id="title"
+      placeholder="Example: ASPIRE Orientation 2026"
+    >
+
+    <label for="date">Meeting Date</label>
+
+    <input
+      type="date"
+      id="date"
+    >
+
+    <button onclick="createMeeting()" id="createButton">
+      Create Meeting
+    </button>
+
+    <div class="status" id="status"></div>
+
+  </div>
+
+
+  <div class="card">
+
+    <h2>Meetings</h2>
+
+    <div id="meetings">
+      Loading meetings...
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+const SUPABASE_URL =
+  "https://ruscrtdlhincwkuwbqpl.supabase.co";
+
+const SUPABASE_KEY =
+  "sb_publishable_SCKiz4jx6wKnFr-vD8gPQQ_9KBeQZgP";
+
+const supabaseClient =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+
+async function createMeeting() {
+
+  const title =
+    document.getElementById("title").value.trim();
+
+  const date =
+    document.getElementById("date").value;
+
+  const status =
+    document.getElementById("status");
+
+  const button =
+    document.getElementById("createButton");
+
+
+  if (!title || !date) {
+
+    status.style.color = "#dc2626";
+
+    status.innerText =
+      "Please enter meeting title and date.";
+
+    return;
+  }
+
+
+  button.disabled = true;
+
+  button.innerText =
+    "Creating...";
+
+
+  const qrToken =
+    crypto.randomUUID().replaceAll("-", "");
+
+
+  const { data, error } =
+    await supabaseClient
+      .from("meetings")
+      .insert({
+        title: title,
+        meeting_date: date,
+        is_open: true,
+        qr_token: qrToken
+      })
+      .select()
+      .single();
+
+
+  if (error) {
+
+    status.style.color = "#dc2626";
+
+    status.innerText =
+      "Could not create meeting: " + error.message;
+
+    button.disabled = false;
+
+    button.innerText =
+      "Create Meeting";
+
+    return;
+  }
+
+
+  status.style.color = "#16a34a";
+
+  status.innerText =
+    "✓ Meeting created successfully!";
+
+
+  document.getElementById("title").value = "";
+
+  document.getElementById("date").value = "";
+
+
+  button.disabled = false;
+
+  button.innerText =
+    "Create Meeting";
+
+
+  loadMeetings();
+
+}
+
+
+async function loadMeetings() {
+
+  const meetingsBox =
+    document.getElementById("meetings");
+
+
+  const { data, error } =
+    await supabaseClient
+      .from("meetings")
+      .select("id, title, meeting_date, is_open")
+      .order("id", { ascending: false });
+
+
+  if (error) {
+
+    meetingsBox.innerText =
+      "Could not load meetings.";
+
+    return;
+  }
+
+
+  if (!data || data.length === 0) {
+
+    meetingsBox.innerText =
+      "No meetings created yet.";
+
+    return;
+  }
+
+
+  meetingsBox.innerHTML = "";
+
+
+  data.forEach(meeting => {
+
+    const div =
+      document.createElement("div");
+
+    div.className =
+      "meeting";
+
+
+    div.innerHTML = `
+      <div class="meeting-title">
+        ${meeting.title}
+      </div>
+
+      <div class="meeting-date">
+        ${meeting.meeting_date}
+      </div>
+
+      <div class="${meeting.is_open ? "open" : "closed"}">
+        ${meeting.is_open ? "● Attendance Open" : "● Attendance Closed"}
+      </div>
+    `;
+
+
+    meetingsBox.appendChild(div);
+
+  });
+
+}
+
+
+loadMeetings();
+
+</script>
+
+</body>
+</html>
