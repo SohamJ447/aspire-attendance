@@ -340,6 +340,14 @@ div.innerHTML = `
   <div class="${meeting.is_open ? "open" : "closed"}">
     ${meeting.is_open ? "● Attendance Open" : "● Attendance Closed"}
   </div>
+  ${meeting.is_open ? `
+  <button
+    onclick="closeMeeting(${meeting.id})"
+    style="margin-top:12px;"
+  >
+    🔒 Close Meeting
+  </button>
+` : ""}
 
   <div
     id="qr-${meeting.id}"
@@ -430,6 +438,31 @@ async function viewAttendance(meetingId) {
   });
 
   alert(message);
+}
+  async function closeMeeting(meetingId) {
+
+  const confirmed =
+    confirm("Are you sure you want to close attendance for this meeting?");
+
+  if (!confirmed) {
+    return;
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("meetings")
+      .update({ is_open: false })
+      .eq("id", meetingId);
+
+  if (error) {
+    console.error(error);
+    alert("Could not close the meeting.");
+    return;
+  }
+
+  alert("Attendance closed successfully.");
+
+  loadMeetings();
 }
 loadMeetings();
 
