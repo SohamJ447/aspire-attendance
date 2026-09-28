@@ -368,6 +368,8 @@ div.innerHTML = `
   </a>
 `;
 
+meetingsBox.appendChild(div);
+
 new QRCode(
   document.getElementById(`qr-${meeting.id}`),
   {
@@ -377,11 +379,6 @@ new QRCode(
   }
 );
 
-meetingsBox.appendChild(div);
-
-  });
-
-}
 
 function copyLink(link) {
 
