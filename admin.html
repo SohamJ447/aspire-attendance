@@ -396,6 +396,41 @@ function copyLink(link) {
 
   alert("Attendance link copied!");
 }
+
+async function viewAttendance(meetingId) {
+
+  const { data, error } =
+    await supabaseClient
+      .from("attendance")
+      .select(`
+        marked_at,
+        members (
+          name
+        )
+      `)
+      .eq("meeting_id", meetingId)
+      .order("marked_at", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    alert("Could not load attendance.");
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    alert("No attendance marked yet.");
+    return;
+  }
+
+  let message = "Attendance:\\n\\n";
+
+  data.forEach((record, index) => {
+    message +=
+      `${index + 1}. ${record.members.name} — ${new Date(record.marked_at).toLocaleTimeString()}\\n`;
+  });
+
+  alert(message);
+}
 loadMeetings();
 
 </script>
