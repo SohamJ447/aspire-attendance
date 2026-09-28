@@ -188,41 +188,53 @@ let meetingId = null;
        LOAD MEETING
        ===================================================== */
 
-    async function loadMeeting() {
+   async function loadMeeting() {
 
-      const meetingBox =
-        document.getElementById("meeting");
+  const meetingBox =
+    document.getElementById("meeting");
 
-      const { data, error } =
-        await supabaseClient
-          .from("meetings")
-          .select("id, title, meeting_date, is_open")
-          .eq("id", meetingId)
-          .single();
+  if (!qrToken) {
 
-      if (error || !data) {
+    meetingBox.innerText =
+      "Invalid attendance QR code.";
 
-        meetingBox.innerText =
-          "Meeting not found.";
+    document.getElementById("attendanceButton").disabled = true;
 
-        document.getElementById("attendanceButton").disabled = true;
+    return;
+  }
 
-        return;
-      }
+  const { data, error } =
+    await supabaseClient
+      .from("meetings")
+      .select("id, title, meeting_date, is_open")
+      .eq("qr_token", qrToken)
+      .single();
 
-      if (!data.is_open) {
+  if (error || !data) {
 
-        meetingBox.innerText =
-          data.title + " — Attendance Closed";
+    meetingBox.innerText =
+      "Meeting not found.";
 
-        document.getElementById("attendanceButton").disabled = true;
+    document.getElementById("attendanceButton").disabled = true;
 
-        return;
-      }
+    return;
+  }
 
-      meetingBox.innerText =
-        data.title;
-    }
+  meetingId = data.id;
+
+  if (!data.is_open) {
+
+    meetingBox.innerText =
+      data.title + " — Attendance Closed";
+
+    document.getElementById("attendanceButton").disabled = true;
+
+    return;
+  }
+
+  meetingBox.innerText =
+    data.title;
+}
 
 
     /* =====================================================
