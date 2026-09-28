@@ -353,19 +353,26 @@ div.innerHTML = `
     Copy Attendance Link
   </button>
 
-  <a
-    href="${attendanceUrl}"
-    target="_blank"
-    style="
-      display:block;
-      margin-top:12px;
-      color:#2563eb;
-      text-decoration:none;
-      font-weight:bold;
-    "
-  >
-    Open Attendance Page
-  </a>
+ <a
+  href="${attendanceUrl}"
+  target="_blank"
+  style="
+    display:block;
+    margin-top:12px;
+    color:#2563eb;
+    text-decoration:none;
+    font-weight:bold;
+  "
+>
+  Open Attendance Page
+</a>
+
+<button
+  onclick="viewAttendance(${meeting.id})"
+  style="margin-top:12px;"
+>
+  View Attendance
+</button>
 `;
 
 meetingsBox.appendChild(div);
