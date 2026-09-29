@@ -423,12 +423,7 @@ async function viewAttendance(meetingId) {
   const { data, error } =
     await supabaseClient
       .from("attendance")
-      .select(`
-        marked_at,
-        members (
-          name
-        )
-      `)
+      .select("member_id, marked_at")
       .eq("meeting_id", meetingId)
       .order("marked_at", { ascending: true });
 
@@ -443,11 +438,35 @@ async function viewAttendance(meetingId) {
     return;
   }
 
-  let message = "Attendance:\\n\\n";
+  const memberIds = data.map(record => record.member_id);
+
+  const { data: members, error: memberError } =
+    await supabaseClient
+      .from("members")
+      .select("id, name")
+      .in("id", memberIds);
+
+  if (memberError) {
+    console.error(memberError);
+    alert("Could not load member names.");
+    return;
+  }
+
+  const memberMap = {};
+
+  members.forEach(member => {
+    memberMap[member.id] = member.name;
+  });
+
+  let message = "Attendance:\n\n";
 
   data.forEach((record, index) => {
+
+    const name =
+      memberMap[record.member_id] || "Unknown Member";
+
     message +=
-      `${index + 1}. ${record.members.name} — ${new Date(record.marked_at).toLocaleTimeString()}\\n`;
+      `${index + 1}. ${name} — ${new Date(record.marked_at).toLocaleTimeString()}\n`;
   });
 
   alert(message);
