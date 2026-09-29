@@ -501,12 +501,7 @@ async function viewAttendance(meetingId) {
   const { data, error } =
     await supabaseClient
       .from("attendance")
-      .select(`
-        marked_at,
-        members (
-          name
-        )
-      `)
+      .select("member_id, marked_at")
       .eq("meeting_id", meetingId)
       .order("marked_at", { ascending: true });
 
@@ -521,17 +516,42 @@ async function viewAttendance(meetingId) {
     return;
   }
 
-  let csv = "Student Name,Attendance Time\n";
+  const memberIds =
+    data.map(record => record.member_id);
+
+  const { data: members, error: memberError } =
+    await supabaseClient
+      .from("members")
+      .select("id, name")
+      .in("id", memberIds);
+
+  if (memberError) {
+    console.error(memberError);
+    alert("Could not load member names.");
+    return;
+  }
+
+  const memberMap = {};
+
+  members.forEach(member => {
+    memberMap[member.id] = member.name;
+  });
+
+  let csv =
+    "Student Name,Attendance Time\n";
 
   data.forEach(record => {
 
     const name =
-      record.members.name.replace(/"/g, '""');
+      memberMap[record.member_id] ||
+      "Unknown Member";
 
     const time =
-      new Date(record.marked_at).toLocaleString();
+      new Date(record.marked_at)
+        .toLocaleString();
 
-    csv += `"${name}","${time}"\n`;
+    csv +=
+      `"${name.replace(/"/g, '""')}","${time}"\n`;
   });
 
   const blob =
@@ -550,7 +570,11 @@ async function viewAttendance(meetingId) {
   link.download =
     `${meetingTitle.replace(/[^a-z0-9]/gi, "_")}_Attendance.csv`;
 
+  document.body.appendChild(link);
+
   link.click();
+
+  document.body.removeChild(link);
 
   URL.revokeObjectURL(url);
 }
